@@ -8,6 +8,7 @@ Type=simple
 WorkingDirectory=/opt/remote-kvm
 Environment=REMOTE_KVM_HOST=127.0.0.1
 Environment=REMOTE_KVM_PORT=8000
+EnvironmentFile=-/etc/default/remote-kvm
 ExecStart=/opt/remote-kvm/.venv/bin/remote-kvm
 Restart=on-failure
 RestartSec=2

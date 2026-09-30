@@ -18,15 +18,21 @@ require_root() {
     fi
 }
 
-check_platform() {
+check_mode_control() {
     [[ -e "${MODE_FILE}" ]] || {
         log "USB mode control not found: ${MODE_FILE}"
         exit 1
     }
-    [[ -e "/sys/class/udc/${UDC_NAME}" ]] || {
-        log "UDC not found: ${UDC_NAME}"
-        exit 1
-    }
+}
+
+wait_for_udc() {
+    local attempt
+    for attempt in {1..50}; do
+        [[ -e "/sys/class/udc/${UDC_NAME}" ]] && return 0
+        sleep 0.1
+    done
+    log "UDC did not appear after switching to device mode: ${UDC_NAME}"
+    exit 1
 }
 
 ensure_configfs() {
@@ -74,14 +80,15 @@ create_gadget() {
     printf '4' > functions/hid.mouse/report_length
     write_mouse_descriptor
 
-    ln -s ../../functions/hid.keyboard configs/c.1/hid.keyboard
-    ln -s ../../functions/hid.mouse configs/c.1/hid.mouse
+    ln -s functions/hid.keyboard configs/c.1/
+    ln -s functions/hid.mouse configs/c.1/
 }
 
 start_gadget() {
     require_root
-    check_platform
+    check_mode_control
     printf 'device' > "${MODE_FILE}"
+    wait_for_udc
     ensure_configfs
 
     if [[ ! -d "${GADGET_DIR}" ]]; then
@@ -121,7 +128,7 @@ stop_gadget() {
 }
 
 status_gadget() {
-    check_platform
+    check_mode_control
     printf 'mode=%s\n' "$(<"${MODE_FILE}")"
     if [[ -d "${GADGET_DIR}" ]]; then
         printf 'gadget=present\n'

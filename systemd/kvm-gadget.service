@@ -8,6 +8,8 @@ Type=oneshot
 ExecStart=/opt/remote-kvm/scripts/kvm-gadget start
 ExecStop=/opt/remote-kvm/scripts/kvm-gadget stop
 RemainAfterExit=yes
+Restart=on-failure
+RestartSec=2
 
 [Install]
 WantedBy=multi-user.target

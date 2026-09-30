@@ -9,9 +9,10 @@ Orange Pi 5 の USB-C Device mode を利用し、対象PCへ USB Keyboard / Mous
 - systemdによるGadget/APIの自動起動
 - Keyboardのキー＋modifier送信
 - Mouseの移動、ホイール、左右中央クリック
+- USB HDMIキャプチャのMJPEG配信と統合Web UI
 - GPIO電源制御と映像配信の拡張インターフェース
 
-現時点ではGPIOと映像の実バックエンド、ブラウザUI、認証機能は未実装です。APIは安全のため初期値で `127.0.0.1:8000` のみに待ち受けます。
+現時点ではGPIOの実バックエンドと認証機能は未実装です。APIは安全のため初期値で `127.0.0.1:8000` のみに待ち受けます。
 
 ## 構成
 
@@ -23,7 +24,7 @@ systemd/remote-kvm-api.service  FastAPI自動起動
 src/remote_kvm/app.py           API
 src/remote_kvm/hid/             HIDレポート生成とデバイス書込み
 src/remote_kvm/power/           GPIO電源制御の差し替え口
-src/remote_kvm/video/           映像配信の差し替え口
+src/remote_kvm/video/           FFmpeg MJPEG配信と差し替え口
 tests/                          実HIDへ書き込まない単体テスト
 ```
 
@@ -73,13 +74,21 @@ Orange Pi標準の `orangepi5-usb2-init.service` は起動時に同じコント�
 ssh -L 8000:127.0.0.1:8000 root@100.97.177.61
 ```
 
-その接続を維持したまま、ブラウザで `http://127.0.0.1:8000/docs` を開けます。
+その接続を維持したまま、ブラウザで次を開きます。
+
+- 操作画面: `http://127.0.0.1:8000/`
+- APIドキュメント: `http://127.0.0.1:8000/docs`
+
+操作画面の映像をクリックするとPointer Lockになり、Keyboardと相対Mouse操作が対象PCへ送られます。`Esc` でMouseを解放できます。
 
 待受け先は任意の `/etc/default/remote-kvm` で上書きできますが、認証やFirewallを用意するまではlocalhostを推奨します。
 
 ```bash
 REMOTE_KVM_HOST=127.0.0.1
 REMOTE_KVM_PORT=8000
+REMOTE_KVM_VIDEO_DEVICE=/dev/v4l/by-id/usb-MACROSILICON_USB_Video-video-index0
+REMOTE_KVM_VIDEO_RESOLUTION=1280x720
+REMOTE_KVM_VIDEO_FPS=30
 ```
 
 変更後は `systemctl restart remote-kvm-api.service` を実行します。
@@ -156,11 +165,13 @@ curl http://127.0.0.1:8000/api/v1/status
 
 GPIO番号はOrange Piの物理ピン番号・SoC line offset・利用ライブラリで表記が異なるため、配線確定後に実機の `gpioinfo` と回路を照合して決めます。
 
-## HDMIキャプチャ追加方針
+## HDMIキャプチャ
 
-まず `v4l2-ctl --list-devices` と対応フォーマットを確認し、USBキャプチャ固有の `/dev/video*` を特定します。SoC内蔵codec/camera用video nodeを番号だけで決め打ちしないでください。
+`v4l2-ctl --list-devices` と対応フォーマットを確認し、USBキャプチャ固有のby-idパスを使用します。SoC内蔵codec/camera用video nodeを番号だけで決め打ちしないでください。
 
-配信方式は遅延とブラウザ互換性を実測して選びます。候補はMJPEG（構成が単純）またはWebRTC（低遅延）です。`src/remote_kvm/video/base.py` の `VideoProvider` を実装し、API/UI側とデバイス処理を分離します。
+現在はキャプチャが生成するMJPEGをFFmpegで再圧縮せず、FastAPIのmultipart streamとして配信します。同時viewerは1接続です。カラーバーだけが表示される場合、キャプチャ自体は動作していますがHDMI入力信号がありません。対象PCの電源、出力先、HDMIケーブルを確認してください。
+
+将来さらに低遅延化または複数viewerが必要なら、`VideoProvider` をWebRTCまたは専用streaming daemonへ差し替えます。
 
 ## 開発・検証
 

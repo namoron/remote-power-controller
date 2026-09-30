@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import errno
+import os
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .hid import HIDController
 from .power import PowerController, UnavailablePowerController
-from .video import UnavailableVideoProvider, VideoProvider
+from .video import FFmpegMjpegProvider, VideoProvider
+from .web import CONTROL_PAGE
 
 
 class KeyPressRequest(BaseModel):
@@ -33,7 +36,14 @@ def create_app(
     application = FastAPI(title="Orange Pi Remote KVM", version="0.1.0")
     application.state.hid = hid or HIDController.system_default()
     application.state.power = power or UnavailablePowerController()
-    application.state.video = video or UnavailableVideoProvider()
+    application.state.video = video or FFmpegMjpegProvider(
+        device=os.getenv(
+            "REMOTE_KVM_VIDEO_DEVICE",
+            "/dev/v4l/by-id/usb-MACROSILICON_USB_Video-video-index0",
+        ),
+        resolution=os.getenv("REMOTE_KVM_VIDEO_RESOLUTION", "1280x720"),
+        fps=int(os.getenv("REMOTE_KVM_VIDEO_FPS", "30")),
+    )
 
     def hid_error(error: Exception) -> HTTPException:
         if isinstance(error, ValueError):
@@ -47,9 +57,9 @@ def create_app(
             return HTTPException(status_code=500, detail=f"HID write failed: {error}")
         return HTTPException(status_code=500, detail="unexpected HID error")
 
-    @application.get("/")
-    def root() -> dict[str, str]:
-        return {"status": "Remote KVM API running", "docs": "/docs"}
+    @application.get("/", response_class=HTMLResponse)
+    def root() -> str:
+        return CONTROL_PAGE
 
     @application.get("/api/v1/status")
     def status() -> dict[str, object]:
@@ -84,6 +94,16 @@ def create_app(
         except (OSError, ValueError) as error:
             raise hid_error(error) from error
         return {"clicked": request.button}
+
+    @application.get("/api/v1/video/stream.mjpg")
+    def video_stream() -> StreamingResponse:
+        if not application.state.video.status()["available"]:
+            raise HTTPException(status_code=503, detail="video capture is unavailable")
+        return StreamingResponse(
+            application.state.video.stream(),
+            media_type="multipart/x-mixed-replace; boundary=frame",
+            headers={"Cache-Control": "no-store"},
+        )
 
     return application
 

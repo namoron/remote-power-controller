@@ -2,6 +2,7 @@ import unittest
 
 from remote_kvm.app import create_app
 from remote_kvm.hid import HIDController, KeyboardDevice, MouseDevice
+from remote_kvm.video import UnavailableVideoProvider
 
 
 class ApplicationTests(unittest.TestCase):
@@ -18,7 +19,7 @@ class ApplicationTests(unittest.TestCase):
                 writer=self.mouse_reports.append,
             ),
         )
-        self.app = create_app(hid=hid)
+        self.app = create_app(hid=hid, video=UnavailableVideoProvider())
 
     def test_routes_are_present(self) -> None:
         paths = self.app.openapi()["paths"]
@@ -26,6 +27,7 @@ class ApplicationTests(unittest.TestCase):
         self.assertIn("/api/v1/mouse/move", paths)
         self.assertIn("/api/v1/mouse/click", paths)
         self.assertIn("/api/v1/status", paths)
+        self.assertIn("/api/v1/video/stream.mjpg", paths)
 
     def test_extension_backends_are_unconfigured(self) -> None:
         self.assertEqual(

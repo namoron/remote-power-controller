@@ -8,6 +8,9 @@ Type=simple
 WorkingDirectory=/opt/remote-kvm
 Environment=REMOTE_KVM_HOST=127.0.0.1
 Environment=REMOTE_KVM_PORT=8000
+Environment=REMOTE_KVM_VIDEO_DEVICE=/dev/v4l/by-id/usb-MACROSILICON_USB_Video-video-index0
+Environment=REMOTE_KVM_VIDEO_RESOLUTION=1280x720
+Environment=REMOTE_KVM_VIDEO_FPS=30
 EnvironmentFile=-/etc/default/remote-kvm
 ExecStart=/opt/remote-kvm/.venv/bin/remote-kvm
 Restart=on-failure

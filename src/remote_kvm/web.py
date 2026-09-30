@@ -12,34 +12,33 @@ CONTROL_PAGE = """<!doctype html>
     header strong { margin-right: auto; }
     #status { color: #8bd5a6; font-size: .9rem; }
     main { display: grid; place-items: center; min-height: calc(100vh - 54px); padding: 1rem; }
-    .screen { position: relative; width: min(100%, 1280px); background: #000; box-shadow: 0 8px 36px #000a; }
-    #video { display: block; width: 100%; aspect-ratio: 16/9; object-fit: contain; cursor: crosshair; }
-    .hint { position: absolute; left: .7rem; bottom: .7rem; padding: .4rem .6rem; border-radius: .35rem; background: #000a; font-size: .8rem; pointer-events: none; }
-    button { color: inherit; background: #303746; border: 1px solid #4b5568; border-radius: .35rem; padding: .4rem .7rem; }
+    .panel { width: min(100%, 32rem); padding: 2rem; border-radius: .8rem; background: #1b1f28; box-shadow: 0 8px 36px #000a; }
+    .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1.5rem; }
+    button { color: inherit; background: #303746; border: 1px solid #4b5568; border-radius: .5rem; padding: 1.2rem .7rem; font-size: 1rem; cursor: pointer; }
+    button:disabled { opacity: .45; cursor: not-allowed; }
+    #force { background: #5e2028; border-color: #9b3a46; }
+    .note { color: #aeb6c6; line-height: 1.6; }
   </style>
 </head>
 <body>
   <header>
     <strong>Orange Pi Remote KVM</strong>
     <span id="status">接続確認中</span>
-    <button id="cad">Ctrl+Alt+Delete</button>
-    <button id="release">Mouse解放</button>
   </header>
   <main>
-    <div class="screen">
-      <img id="video" src="/api/v1/video/stream.mjpg" alt="HDMI capture">
-      <div class="hint">映像をクリックするとKeyboard/Mouse操作を開始（EscでMouse解放）</div>
+    <div class="panel">
+      <h1>Power Control</h1>
+      <p class="note">Powerは0.2秒押下、Force Offは5秒間押下します。Force OffはOSを介さず電源を切るため、データを失う可能性があります。</p>
+      <div class="actions">
+        <button id="power" disabled>Power</button>
+        <button id="force" disabled>Force Off</button>
+      </div>
     </div>
   </main>
   <script>
-    const video = document.querySelector('#video');
     const statusNode = document.querySelector('#status');
-    const specialKeys = {
-      'Enter':'enter','Escape':'escape','Backspace':'backspace','Tab':'tab',' ':'space',
-      'Delete':'delete','Insert':'insert','Home':'home','End':'end','PageUp':'page_up',
-      'PageDown':'page_down','ArrowUp':'up','ArrowDown':'down','ArrowLeft':'left',
-      'ArrowRight':'right'
-    };
+    const powerButton = document.querySelector('#power');
+    const forceButton = document.querySelector('#force');
     const post = (path, body) => fetch(path, {
       method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(body)
     }).then(async response => {
@@ -50,55 +49,28 @@ CONTROL_PAGE = """<!doctype html>
     async function refreshStatus() {
       try {
         const data = await fetch('/api/v1/status').then(response => response.json());
-        statusNode.textContent = data.video.available && data.hid.keyboard_available
-          ? 'HID / Video ready' : '一部デバイス未接続';
+        const ready = data.power.available;
+        powerButton.disabled = !ready || data.power.busy;
+        forceButton.disabled = !ready || data.power.busy;
+        statusNode.textContent = ready ? (data.power.busy ? '操作中' : 'Power ready') : 'リレー未設定';
       } catch { statusNode.textContent = 'API接続失敗'; }
     }
     refreshStatus(); setInterval(refreshStatus, 5000);
 
-    video.addEventListener('click', () => video.requestPointerLock());
-    document.querySelector('#release').addEventListener('click', () => document.exitPointerLock());
-    document.querySelector('#cad').addEventListener('click', () =>
-      post('/api/v1/keyboard/press', {key:'delete', modifiers:['left_ctrl','left_alt']}));
-
-    document.addEventListener('keydown', event => {
-      if (event.repeat || ['Control','Shift','Alt','Meta'].includes(event.key)) return;
-      let key = specialKeys[event.key] || event.key.toLowerCase();
-      if (!/^[a-z0-9]$/.test(key) && !Object.values(specialKeys).includes(key) && !/^f([1-9]|1[0-2])$/.test(key)) return;
-      event.preventDefault();
-      const modifiers = [];
-      if (event.ctrlKey) modifiers.push('left_ctrl');
-      if (event.shiftKey) modifiers.push('left_shift');
-      if (event.altKey) modifiers.push('left_alt');
-      if (event.metaKey) modifiers.push('left_meta');
-      post('/api/v1/keyboard/press', {key, modifiers});
+    powerButton.addEventListener('click', async () => {
+      if (!confirm('Powerボタンを短押しします。実行しますか？')) return;
+      powerButton.disabled = forceButton.disabled = true;
+      await post('/api/v1/power/press', {});
+      setTimeout(refreshStatus, 300);
     });
-
-    let dx = 0, dy = 0, scheduled = false;
-    document.addEventListener('mousemove', event => {
-      if (document.pointerLockElement !== video) return;
-      dx += event.movementX; dy += event.movementY;
-      if (scheduled) return;
-      scheduled = true;
-      requestAnimationFrame(() => {
-        const sendX = Math.max(-127, Math.min(127, dx));
-        const sendY = Math.max(-127, Math.min(127, dy));
-        dx -= sendX; dy -= sendY; scheduled = false;
-        if (sendX || sendY) post('/api/v1/mouse/move', {dx:sendX, dy:sendY, wheel:0});
-      });
+    forceButton.addEventListener('click', async () => {
+      const answer = prompt('強制電源OFFを実行します。FORCE と入力してください。');
+      if (answer !== 'FORCE') return;
+      powerButton.disabled = forceButton.disabled = true;
+      statusNode.textContent = '5秒間押下中';
+      await post('/api/v1/power/force-off', {confirmation:'FORCE_OFF'});
+      setTimeout(refreshStatus, 300);
     });
-    video.addEventListener('contextmenu', event => event.preventDefault());
-    video.addEventListener('mousedown', event => {
-      if (document.pointerLockElement !== video) return;
-      event.preventDefault();
-      const button = ['left','middle','right'][event.button];
-      if (button) post('/api/v1/mouse/click', {button});
-    });
-    video.addEventListener('wheel', event => {
-      if (document.pointerLockElement !== video) return;
-      event.preventDefault();
-      post('/api/v1/mouse/move', {dx:0, dy:0, wheel:event.deltaY > 0 ? -1 : 1});
-    }, {passive:false});
   </script>
 </body>
 </html>

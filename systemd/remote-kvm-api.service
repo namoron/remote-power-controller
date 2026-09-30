@@ -11,6 +11,7 @@ Environment=REMOTE_KVM_PORT=8000
 Environment=REMOTE_KVM_VIDEO_DEVICE=/dev/v4l/by-id/usb-MACROSILICON_USB_Video-video-index0
 Environment=REMOTE_KVM_VIDEO_RESOLUTION=1280x720
 Environment=REMOTE_KVM_VIDEO_FPS=30
+Environment=PYTHONPATH=/usr/lib/python3/dist-packages
 EnvironmentFile=-/etc/default/remote-kvm
 ExecStart=/opt/remote-kvm/.venv/bin/remote-kvm
 Restart=on-failure

@@ -10,7 +10,7 @@ Orange Pi 5 の USB-C Device mode を利用し、対象PCへ USB Keyboard / Mous
 - Keyboardのキー＋modifier送信
 - Mouseの移動、ホイール、左右中央クリック
 - USB HDMIキャプチャのMJPEG配信と統合Web UI
-- GPIO電源制御と映像配信の拡張インターフェース
+- GPIOリレーによるPower短押しと強制電源OFF
 
 現時点ではGPIOの実バックエンドと認証機能は未実装です。APIは安全のため初期値で `127.0.0.1:8000` のみに待ち受けます。
 
@@ -89,6 +89,10 @@ REMOTE_KVM_PORT=8000
 REMOTE_KVM_VIDEO_DEVICE=/dev/v4l/by-id/usb-MACROSILICON_USB_Video-video-index0
 REMOTE_KVM_VIDEO_RESOLUTION=1280x720
 REMOTE_KVM_VIDEO_FPS=30
+# リレー配線と論理を確認してから有効化する
+# REMOTE_KVM_POWER_CHIP=/dev/gpiochip1
+# REMOTE_KVM_POWER_LINE=20
+# REMOTE_KVM_POWER_ACTIVE_LOW=true
 ```
 
 変更後は `systemctl restart remote-kvm-api.service` を実行します。
@@ -172,7 +176,9 @@ curl http://127.0.0.1:8000/api/v1/status
 
 ## GPIOリレー追加方針
 
-`src/remote_kvm/power/base.py` の `PowerController` を実装し、`create_app()` へ注入します。実装時は以下を守ります。
+`Power` は0.2秒、`Force Off` は5秒間、同じ `PWR_SW` リレーをONにします。Force Offはブラウザで `FORCE` の入力が必要です。GPIO設定がない場合、ボタンは無効になります。
+
+Orange Pi 5の物理24番ピン（GPIO1_C4）は `/dev/gpiochip1` のline 20です。物理25番はGNDです。リレーのactive-low/highを確認してから `/etc/default/remote-kvm` へ設定します。
 
 - マザーボードの `PWR_SW` / `RESET_SW` には外部電圧を印加しない。
 - 無電圧接点のリレーまたは適切に絶縁された回路を使う。

@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import errno
 import os
+from typing import Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .hid import HIDController
-from .power import PowerController, UnavailablePowerController
+from .power import GpiodPowerController, PowerController, UnavailablePowerController
 from .video import FFmpegMjpegProvider, VideoProvider
 from .web import CONTROL_PAGE
 
@@ -28,6 +29,22 @@ class MouseClickRequest(BaseModel):
     button: str = "left"
 
 
+class ForceOffRequest(BaseModel):
+    confirmation: Literal["FORCE_OFF"]
+
+
+def power_from_environment() -> PowerController:
+    line = os.getenv("REMOTE_KVM_POWER_LINE")
+    if line is None:
+        return UnavailablePowerController()
+    return GpiodPowerController.open(
+        chip_name=os.getenv("REMOTE_KVM_POWER_CHIP", "/dev/gpiochip1"),
+        line_offset=int(line),
+        active_low=os.getenv("REMOTE_KVM_POWER_ACTIVE_LOW", "true").lower()
+        in {"1", "true", "yes", "on"},
+    )
+
+
 def create_app(
     hid: HIDController | None = None,
     power: PowerController | None = None,
@@ -35,7 +52,7 @@ def create_app(
 ) -> FastAPI:
     application = FastAPI(title="Orange Pi Remote KVM", version="0.1.0")
     application.state.hid = hid or HIDController.system_default()
-    application.state.power = power or UnavailablePowerController()
+    application.state.power = power or power_from_environment()
     application.state.video = video or FFmpegMjpegProvider(
         device=os.getenv(
             "REMOTE_KVM_VIDEO_DEVICE",
@@ -94,6 +111,22 @@ def create_app(
         except (OSError, ValueError) as error:
             raise hid_error(error) from error
         return {"clicked": request.button}
+
+    @application.post("/api/v1/power/press")
+    def power_press() -> dict[str, object]:
+        try:
+            application.state.power.power_press()
+        except RuntimeError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        return {"action": "power", "seconds": 0.2}
+
+    @application.post("/api/v1/power/force-off")
+    def power_force_off(request: ForceOffRequest) -> dict[str, object]:
+        try:
+            application.state.power.force_off()
+        except RuntimeError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        return {"action": "force_off", "seconds": 5.0}
 
     @application.get("/api/v1/video/stream.mjpg")
     def video_stream() -> StreamingResponse:

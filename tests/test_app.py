@@ -28,6 +28,8 @@ class ApplicationTests(unittest.TestCase):
         self.assertIn("/api/v1/mouse/click", paths)
         self.assertIn("/api/v1/status", paths)
         self.assertIn("/api/v1/video/stream.mjpg", paths)
+        self.assertIn("/api/v1/power/press", paths)
+        self.assertIn("/api/v1/power/force-off", paths)
 
     def test_extension_backends_are_unconfigured(self) -> None:
         self.assertEqual(

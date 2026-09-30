@@ -93,6 +93,23 @@ REMOTE_KVM_VIDEO_FPS=30
 
 変更後は `systemctl restart remote-kvm-api.service` を実行します。
 
+### Tailscaleから直接アクセスする
+
+SSHトンネルを使わず、Tailscale内から直接開く場合はOrange PiのTailscale IPだけにbindします。
+
+```bash
+cat >/etc/default/remote-kvm <<'EOF'
+REMOTE_KVM_HOST=100.97.177.61
+REMOTE_KVM_PORT=8000
+REMOTE_KVM_VIDEO_DEVICE=/dev/v4l/by-id/usb-MACROSILICON_USB_Video-video-index0
+REMOTE_KVM_VIDEO_RESOLUTION=1280x720
+REMOTE_KVM_VIDEO_FPS=30
+EOF
+systemctl restart remote-kvm-api.service
+```
+
+ブラウザで `http://100.97.177.61:8000/` を開きます。認証未実装のため `0.0.0.0` へbindせず、Tailscale ACLでこのOrange Piへ接続できる端末を制限してください。
+
 ## API例
 
 状態確認:

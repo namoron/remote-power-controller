@@ -1,7 +1,7 @@
 [project]
 name = "remote-kvm"
 version = "0.1.0"
-description = "Add your description here"
+description = "Browser-controlled USB HID KVM for Orange Pi 5"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-remote-kvm = "remote_kvm:main"
+remote-kvm = "remote_kvm.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]

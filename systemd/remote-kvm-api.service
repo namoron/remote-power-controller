@@ -1,0 +1,24 @@
+[Unit]
+Description=Orange Pi Remote KVM API
+After=network.target kvm-gadget.service
+Requires=kvm-gadget.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/remote-kvm
+Environment=REMOTE_KVM_HOST=127.0.0.1
+Environment=REMOTE_KVM_PORT=8000
+ExecStart=/opt/remote-kvm/.venv/bin/remote-kvm
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=Orange Pi Remote KVM USB HID Gadget
+RequiresMountsFor=/sys/kernel/config
+After=local-fs.target sys-kernel-config.mount orangepi5-usb2-init.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/remote-kvm/scripts/kvm-gadget start
+ExecStop=/opt/remote-kvm/scripts/kvm-gadget stop
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

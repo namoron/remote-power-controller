@@ -1,0 +1,4 @@
+config/*
+!config/configuration.yaml
+!config/rest_commands.yaml
+!config/scripts.yaml

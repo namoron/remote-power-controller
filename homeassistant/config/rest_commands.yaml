@@ -1,0 +1,11 @@
+pc_power_press:
+  url: "http://100.97.177.61:8000/api/v1/power/press"
+  method: post
+  timeout: 5
+
+pc_force_off:
+  url: "http://100.97.177.61:8000/api/v1/power/force-off"
+  method: post
+  content_type: "application/json"
+  payload: '{"confirmation":"FORCE_OFF"}'
+  timeout: 15

@@ -1,10 +1,10 @@
-# Orange Pi 5 Remote Power Control
+# Remote Power Controller
 
-Orange Pi 5のGPIOに接続したリレーをブラウザまたはHTTP APIから操作し、PCマザーボードの`PWR_SW`を短押し・長押しするための小さなFastAPIアプリです。
+Linux SBCのGPIOに接続したリレーをブラウザ、Home Assistant、またはHTTP APIから操作し、PCマザーボードの`PWR_SW`を短押し・長押しするための小さなFastAPIアプリです。
 
-この構成ではUSB Keyboard、Mouse、HDMIキャプチャ配信は使用しません。
+`libgpiod`を利用し、GPIO chipとlineは環境変数で指定します。現在の検証済み環境はOrange Pi 5 4GBとUbuntu 22.04です。この構成ではUSB Keyboard、Mouse、HDMIキャプチャ配信は使用しません。
 
-## 現在の配線
+## 現在の検証済み配線
 
 - リレーボード: ELEKIT LK-RB1
 - 制御GPIO: `GPIO0_D5`（`/dev/gpiochip0` line 29）

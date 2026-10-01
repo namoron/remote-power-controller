@@ -1,5 +1,5 @@
 [Unit]
-Description=Orange Pi Remote KVM API
+Description=Remote Power Controller API
 After=network.target
 
 [Service]

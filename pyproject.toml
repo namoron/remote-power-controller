@@ -1,7 +1,7 @@
 [project]
-name = "remote-kvm"
+name = "remote-power-controller"
 version = "0.1.0"
-description = "Browser-controlled GPIO power switch for Orange Pi 5"
+description = "Browser-controlled GPIO power switch for Linux SBCs"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -11,6 +11,9 @@ dependencies = [
 
 [project.scripts]
 remote-kvm = "remote_kvm.__main__:main"
+
+[tool.uv.build-backend]
+module-name = "remote_kvm"
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]

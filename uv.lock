@@ -361,7 +361,7 @@ wheels = [
 ]
 
 [[package]]
-name = "remote-kvm"
+name = "remote-power-controller"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [

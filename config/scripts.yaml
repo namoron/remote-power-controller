@@ -1,0 +1,6 @@
+pc_power:
+  alias: PC Power
+  icon: mdi:power
+  mode: single
+  sequence:
+    - action: rest_command.pc_power_press

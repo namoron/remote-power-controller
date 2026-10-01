@@ -63,7 +63,7 @@ class GpiodPowerController:
     def power_press(self, seconds: float = 0.2) -> None:
         self._pulse(seconds)
 
-    def force_off(self, seconds: float = 5.0) -> None:
+    def force_off(self, seconds: float = 8.0) -> None:
         self._pulse(seconds)
 
     def status(self) -> dict[str, object]:

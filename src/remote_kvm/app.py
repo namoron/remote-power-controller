@@ -51,6 +51,10 @@ def create_app(
     video: VideoProvider | None = None,
 ) -> FastAPI:
     application = FastAPI(title="Orange Pi Remote KVM", version="0.1.0")
+    force_off_seconds = float(os.getenv("REMOTE_KVM_FORCE_OFF_SECONDS", "8.0"))
+    if not 4.0 <= force_off_seconds <= 15.0:
+        raise ValueError("REMOTE_KVM_FORCE_OFF_SECONDS must be between 4 and 15")
+    application.state.force_off_seconds = force_off_seconds
     application.state.hid = hid or HIDController.system_default()
     application.state.power = power or power_from_environment()
     application.state.video = video or FFmpegMjpegProvider(
@@ -80,9 +84,11 @@ def create_app(
 
     @application.get("/api/v1/status")
     def status() -> dict[str, object]:
+        power_status = application.state.power.status()
+        power_status["force_off_seconds"] = application.state.force_off_seconds
         return {
             "hid": application.state.hid.status(),
-            "power": application.state.power.status(),
+            "power": power_status,
             "video": application.state.video.status(),
         }
 
@@ -123,10 +129,15 @@ def create_app(
     @application.post("/api/v1/power/force-off")
     def power_force_off(request: ForceOffRequest) -> dict[str, object]:
         try:
-            application.state.power.force_off()
+            application.state.power.force_off(
+                seconds=application.state.force_off_seconds
+            )
         except RuntimeError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
-        return {"action": "force_off", "seconds": 5.0}
+        return {
+            "action": "force_off",
+            "seconds": application.state.force_off_seconds,
+        }
 
     @application.get("/api/v1/video/stream.mjpg")
     def video_stream() -> StreamingResponse:

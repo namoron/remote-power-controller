@@ -28,7 +28,7 @@ CONTROL_PAGE = """<!doctype html>
   <main>
     <div class="panel">
       <h1>Power Control</h1>
-      <p class="note">Powerは0.2秒押下、Force Offは5秒間押下します。Force OffはOSを介さず電源を切るため、データを失う可能性があります。</p>
+      <p class="note">Powerは0.2秒押下、Force Offは<span id="force-seconds">8</span>秒間押下します。Force OffはOSを介さず電源を切るため、データを失う可能性があります。</p>
       <div class="actions">
         <button id="power" disabled>Power</button>
         <button id="force" disabled>Force Off</button>
@@ -39,6 +39,8 @@ CONTROL_PAGE = """<!doctype html>
     const statusNode = document.querySelector('#status');
     const powerButton = document.querySelector('#power');
     const forceButton = document.querySelector('#force');
+    const forceSecondsNode = document.querySelector('#force-seconds');
+    let forceOffSeconds = 8;
     const post = (path, body) => fetch(path, {
       method: 'POST', headers: {'content-type':'application/json'}, body: JSON.stringify(body)
     }).then(async response => {
@@ -50,6 +52,8 @@ CONTROL_PAGE = """<!doctype html>
       try {
         const data = await fetch('/api/v1/status').then(response => response.json());
         const ready = data.power.available;
+        forceOffSeconds = data.power.force_off_seconds ?? 8;
+        forceSecondsNode.textContent = forceOffSeconds;
         powerButton.disabled = !ready || data.power.busy;
         forceButton.disabled = !ready || data.power.busy;
         statusNode.textContent = ready ? (data.power.busy ? '操作中' : 'Power ready') : 'リレー未設定';
@@ -67,7 +71,7 @@ CONTROL_PAGE = """<!doctype html>
       const answer = prompt('強制電源OFFを実行します。FORCE と入力してください。');
       if (answer !== 'FORCE') return;
       powerButton.disabled = forceButton.disabled = true;
-      statusNode.textContent = '5秒間押下中';
+      statusNode.textContent = `${forceOffSeconds}秒間押下中`;
       await post('/api/v1/power/force-off', {confirmation:'FORCE_OFF'});
       setTimeout(refreshStatus, 300);
     });

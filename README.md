@@ -93,6 +93,8 @@ REMOTE_KVM_VIDEO_FPS=30
 # REMOTE_KVM_POWER_CHIP=/dev/gpiochip1
 # REMOTE_KVM_POWER_LINE=20
 # REMOTE_KVM_POWER_ACTIVE_LOW=true
+# 強制電源OFFの長押し時間（4～15秒、既定値8秒）
+# REMOTE_KVM_FORCE_OFF_SECONDS=8
 ```
 
 変更後は `systemctl restart remote-kvm-api.service` を実行します。
@@ -176,7 +178,7 @@ curl http://127.0.0.1:8000/api/v1/status
 
 ## GPIOリレー追加方針
 
-`Power` は0.2秒、`Force Off` は5秒間、同じ `PWR_SW` リレーをONにします。Force Offはブラウザで `FORCE` の入力が必要です。GPIO設定がない場合、ボタンは無効になります。
+`Power` は0.2秒、`Force Off` は既定で8秒間、同じ `PWR_SW` リレーをONにします。Force Offはブラウザで `FORCE` の入力が必要です。GPIO設定がない場合、ボタンは無効になります。
 
 Orange Pi 5の物理24番ピン（GPIO1_C4）は `/dev/gpiochip1` のline 20です。物理25番はGNDです。リレーのactive-low/highを確認してから `/etc/default/remote-kvm` へ設定します。
 

@@ -1,3 +1,3 @@
-"""Orange Pi Remote KVM."""
+"""Orange Pi remote power control."""
 
 __version__ = "0.1.0"

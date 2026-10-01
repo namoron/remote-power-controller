@@ -1,45 +1,38 @@
+import os
 import unittest
+from unittest.mock import patch
 
 from remote_kvm.app import create_app
-from remote_kvm.hid import HIDController, KeyboardDevice, MouseDevice
-from remote_kvm.video import UnavailableVideoProvider
 
 
 class ApplicationTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self.keyboard_reports: list[bytes] = []
-        self.mouse_reports: list[bytes] = []
-        hid = HIDController(
-            keyboard=KeyboardDevice(
-                press_seconds=0,
-                writer=self.keyboard_reports.append,
-            ),
-            mouse=MouseDevice(
-                click_seconds=0,
-                writer=self.mouse_reports.append,
-            ),
-        )
-        self.app = create_app(hid=hid, video=UnavailableVideoProvider())
-
-    def test_routes_are_present(self) -> None:
-        paths = self.app.openapi()["paths"]
-        self.assertIn("/api/v1/keyboard/press", paths)
-        self.assertIn("/api/v1/mouse/move", paths)
-        self.assertIn("/api/v1/mouse/click", paths)
-        self.assertIn("/api/v1/status", paths)
-        self.assertIn("/api/v1/video/stream.mjpg", paths)
-        self.assertIn("/api/v1/power/press", paths)
-        self.assertIn("/api/v1/power/force-off", paths)
-
-    def test_extension_backends_are_unconfigured(self) -> None:
+    def test_only_power_api_routes_are_present(self) -> None:
+        paths = create_app().openapi()["paths"]
         self.assertEqual(
-            self.app.state.power.status(),
+            {path for path in paths if path.startswith("/api/")},
+            {
+                "/api/v1/status",
+                "/api/v1/power/press",
+                "/api/v1/power/force-off",
+            },
+        )
+
+    def test_power_backend_is_unconfigured_without_gpio_environment(self) -> None:
+        with patch.dict(os.environ, {}, clear=True):
+            app = create_app()
+        self.assertEqual(
+            app.state.power.status(),
             {"available": False, "backend": "unconfigured"},
         )
-        self.assertEqual(
-            self.app.state.video.status(),
-            {"available": False, "backend": "unconfigured"},
-        )
+
+    def test_force_off_duration_is_validated(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"REMOTE_KVM_FORCE_OFF_SECONDS": "3"},
+            clear=True,
+        ):
+            with self.assertRaises(ValueError):
+                create_app()
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 [project]
 name = "remote-kvm"
 version = "0.1.0"
-description = "Browser-controlled USB HID KVM for Orange Pi 5"
+description = "Browser-controlled GPIO power switch for Orange Pi 5"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
